@@ -1,53 +1,61 @@
+'''
+Adicionar despesas
+Mudar a função "Alterar saldo" pra "Atualizar saldo" pra poder fazer o cálculo de ganho de investimento líquido
+Transformar o saldo em lista pra ter os dados da movimentação do saldo
+Adicionar movimento saldo <-> reserva
+Poder sacar valores das reservas
+'''
+
 # adicionar nova reserva
-def add_reservation(saldo, reservation):
+def new_reserve(balance, reserve):
 
-    reservation_name = input("Digite um nome para a nova reserva: ")
+    reserve_name = input("Digite um nome para a nova reserva: ")
 
-    if reservation_name in reservation:
+    if reserve_name in reserve:
         print("Já existe uma reserva com esse nome")
-        return saldo, reservation
+        return balance, reserve
 
     try:
-        reservation_value = float(input("Digite o valor da reserva: "))
+        reserve_balance = float(input("Digite o valor da reserva: "))
     except ValueError:
         print("ERRO: VALOR INVÁLIDO")
-        return saldo, reservation
+        return balance, reserve
 
-    if saldo < reservation_value or reservation_value < 0:
-        print("Você não tem esse valor para adicionar na caixinha\nOBS: Verifique o valor do saldo")
-        return saldo, reservation
+    if balance < reserve_balance or reserve_balance < 0:
+        print("Você não tem esse valor para adicionar na caixinha\nOBS: Verifique o valor do balance")
+        return balance, reserve
     
-    saldo -= reservation_value
-    reservation[reservation_name] = reservation_value
-    return saldo, reservation
+    balance -= reserve_balance
+    reserve[reserve_name] = reserve_balance
+    return balance, reserve
 
 # modificações de saldo
-def modify_saldo(saldo):
-    saldo_before = saldo
+def modify_balance(balance):
+    balance_before = balance
 
     try:
-        saldo_option = int(input("1 - Alterar valor do saldo\n2 - Adicionar saldo"))
+        balance_option = int(input("1 - Alterar valor do saldo\n2 - Adicionar saldo"))
     except ValueError:
         print("ERRO: VALOR INVÁLIDO")
-        return saldo
+        return balance
 
-    if saldo_option == 1:
-        saldo = float(input("Novo saldo: R$"))
-    elif saldo_option == 2:
-        saldo_add = float(input("Valor do saldo adicionado: R$"))
-        saldo += saldo_add
+    if balance_option == 1:
+        balance = float(input("Novo saldo: R$"))
+    elif balance_option == 2:
+        balance_add = float(input("Valor do saldo adicionado: R$"))
+        balance += balance_add
 
-    saldo_after = saldo
-    print(f"Valor adicionado: R${saldo_after}\nDiferença de valor: R${saldo_after - saldo_before}\n")
-    return saldo_after
+    balance_after = balance
+    print(f"Valor adicionado: R${balance_after}\nDiferença de valor: R${balance_after - balance_before}\n")
+    return balance_after
 
 # Função de gestão de opções
 def answer_options():
-    saldo = 0
-    reservation = {}
+    balance = 0
+    reserve = {}
 
     while True:
-        print(f"\nSaldo disponível: R${saldo}")
+        print(f"\nSaldo disponível: R${balance}")
         try:
             main_option = int(input("Opções:\n1 - Saldo\n2 - Reservas\n3 - exit\n"))
         except ValueError:
@@ -55,22 +63,22 @@ def answer_options():
             continue
 
         if main_option == 1:
-                saldo = modify_saldo(saldo)
+                balance = modify_balance(balance)
     
         elif main_option == 2:
-            if reservation == {}:
+            if reserve == {}:
                 print("Nenhuma reserva criada!")
             else:
-                print(f"Reservas\n{reservation}")
+                print(f"Reservas\n{reserve}")
 
             try:
-                new_reservation = int(input("Deseja adicionar uma nova reserva? 1/s 2/n "))
+                new_reserve_option = int(input("Deseja adicionar uma nova reserva? 1/s 2/n "))
             except ValueError:
                 print("ERRO: VALOR INVÁLIDO")
                 continue
 
-            if new_reservation == 1:
-                saldo, reservation = add_reservation(saldo, reservation)
+            if new_reserve_option == 1:
+                balance, reserve = new_reserve(balance, reserve)
 
         elif main_option == 3:
             break
