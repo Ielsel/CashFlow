@@ -1,2 +1,12 @@
-# CashFlow
-Sistema de controle financeiro pessoal focado em simplicidade, permitindo gerenciar saldo, reservas e transações de forma prática.
+# Cashflow
+
+Sistema de controle financeiro pessoal.
+
+## Versão atual
+- CLI em Python
+- Controle de saldo
+- Reservas
+
+## Próximos passos
+- Migrar para FastAPI
+- Adicionar banco de dados
