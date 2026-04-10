@@ -18,9 +18,8 @@ Aplicação em **CLI (terminal)** com:
 
 ## 🔧 Próximos passos
 
-* Implementar histórico de saldo
+* Retirar a necessidade de depositar algum valor na criação da reserva
 * Implementar operações em reservas (saque e adição)
-* Criar confirmação pra opção Alterar saldo
 * Implementar biblioteca Pandas e Decimal
 
 ---
@@ -28,6 +27,7 @@ Aplicação em **CLI (terminal)** com:
 ## 📈 Roadmap
 
 * Adicionar persistência com banco de dados
+* Adicionar uma interface melhor
 
 ---
 

@@ -1,56 +1,75 @@
 '''
 Features:
     Adicionar despesas;
-    Criar confirmação pra opção Alterar saldo;
-    Transformar o saldo em balance_history(list) e deixar balance como float padrão;
     Adicionar movimento das reservas;
     Adicionar import pandas
-    Adicionar import decimal
-    Poder sacar e adicionar valores nas reservas já criadas.
+    Poder sacar e adicionar valores nas reservas já criadas
+    Poder modificar o nome da reserva
+    
+Fix:
+    Extrato é diferente do histórico de saldo, são valores depositados e saques
+    Mostrar as reservas com melhor formatação pro usuário
 '''
+# Bibliotecas
+from decimal import *
+
+getcontext().prec = 4
 
 #========================
 # Adicionar nova reserva
 #========================
-def add_new_reserve(balance, reserve, reserve_balance, reserve_name):
+def add_new_reserve(balance_history, balance, reserve, reserve_balance, reserve_name):
     '''
         Adiciona uma nova reserva definindo nome e valor, 
         subtraindo o valor do saldo para a nova reserva:
-            nome: string, valor: float
+            nome: string, valor: Decimal
             Subtrai saldo: saldo = saldo - (valor da reserva)
     '''
-    balance_value = balance[-1]
 
-    if balance[-1] < reserve_balance or reserve_balance < 0:
+    # Tratamento caso o valor incluído na reserva seja maior que o saldo ou seja negativo
+    if balance < reserve_balance or reserve_balance < 0:
         return None
     
-    balance_value -= reserve_balance
-    balance.append(balance_value)
-    reserve[reserve_name] = reserve_balance
-    return balance, reserve
+    balance -= reserve_balance # Subtrai do saldo o dinheiro depositado na reserva
+    balance_history.append(balance) # Coloca o novo saldo no histórico
+    reserve[reserve_name] = reserve_balance # Cria o novo item na lista de reserva
+    return balance_history, balance, reserve # Retorna resultado
 
 #========================
 # Modificações de saldo
 #========================
-def available_balance_operations(balance, balance_add, balance_option):
+def available_balance_operations(balance_history, balance, balance_add, balance_option):
     '''
-        Adiciona e atualiza o saldo:
-            Adicionar saldo: saldo + novo saldo
-            Atualizar saldo: saldo = novo saldo
+        Deposita, faz saque e atualiza o saldo:
+            Depósito de saldo: saldo + valor_input
+            Saque de saldo: saldo - valor_input
+            Atualizar saldo: saldo = novo_saldo
+            Histórico de saldo = lista de saldos
     '''
+
+    # Depósito
     if balance_option == 2:
-        balance_add += balance[-1]
-        balance.append(balance_add)
-
+        #balance += Decimal(balance_add) # Adiciona o valor do input no saldo
+        balance += balance_add
+        balance_history.append(balance) # Adiciona o novo saldo na lista de histórico de saldos
+        return balance_history, balance, balance_add # retorna valores atualizados
+    
+    # Saque
     elif balance_option == 3:
-        balance.append(balance_add)
+        balance -= balance_add # Subtrai o valor do input no saldo
+        balance_history.append(balance) # Adiciona o novo saldo na lista de histórico de saldos
+        return balance_history, balance, balance_add # retorna valores atualizados
 
-    return balance, balance_add
+    # Atualizar saldo
+    elif balance_option == 4:
+        balance = balance_add # Atribui o input ao saldo
+        balance_history.append(balance)
+        return balance_history, balance
 
 #========================
-# Interface IO reserve
+# Interface menu de reservas
 #========================
-def reserve_menu(balance, reserve):
+def reserve_menu(balance_history, balance, reserve):
     '''
         Menu de reservas, trás as opções:
             1 - Ver reservas: 
@@ -68,24 +87,30 @@ def reserve_menu(balance, reserve):
             reserve_option = int(input("1 - Ver reservas\n2 - Criar reserva\n3 - Alterar reserva (em breve)\n4 - Voltar\nResposta: "))
 
             if reserve_option == 1:
-                print(f"\nReservas:\n{reserve}\n")
-                continue
+                if reserve == {}:
+                    print("\nNenhuma reserva criada!\n")
+                    continue
+                else:
+                    # Formatar melhor a resposta: adicionar reserve_name e reserve_value
+                    print(f"\nReservas:\n{reserve}\n")
+                    continue
             
             elif reserve_option == 2:
                 reserve_name = input("Digite um nome para a nova reserva: ")
 
+                # Verifica se já existe reserva com esse nome
                 if reserve_name in reserve:
                     print("Já existe uma reserva com esse nome!")
                     continue
                 
                 try:
-                    reserve_balance = float(input("Digite o valor da reserva: "))
-                    add_new_reserve_result = add_new_reserve(balance, reserve, reserve_balance, reserve_name)
+                    reserve_balance = Decimal(input("Digite o valor da reserva: "))
+                    add_new_reserve_result = add_new_reserve(balance_history, balance, reserve, reserve_balance, reserve_name)
                     if add_new_reserve_result is None:
-                        print("Você não tem esse valor para adicionar na caixinha\nOBS: Verifique o valor do balance\n")
+                        print("Você não tem saldo suficiente!\nOBS: Verifique o valor do saldo\n")
                         continue
                     else:
-                        balance, reserve = add_new_reserve_result
+                        balance_history, balance, reserve = add_new_reserve_result
                         print(f"Nova reserva adicionada!\n{reserve_name}: R${reserve_balance}\n")
                         continue
 
@@ -101,54 +126,93 @@ def reserve_menu(balance, reserve):
             continue
 
 #========================
-# Interface IO balance
+# Interface menu de saldo
 #========================
-def balance_menu(balance):
+def balance_menu(balance_history, balance):
     '''
         Menu de reservas, trás as opções:
-            1 - Ver extrato:
+            1 - Extrato:
                     mostrar extrato do movimento do saldo
-            2 - Adicionar saldo:
-                    chama available_balance_operations() pra adicionar o saldo
-            3 - Atualizar o valor do saldo
+            2 - Depositar:
+                    chama available_balance_operations() pra depositar o saldo
+            3 - Sacar:
+                    chama available_balance_operations() pra sacar o saldo
+            4 - Atualizar o valor do saldo:
                     chama available_balance_operations() pra atualizar o saldo
-            4 - Voltar:
+            5 - Voltar:
                 Voltar ao menu principal
     '''
     while True:
         print("--MENU SALDO--")
         try:
-            balance_option = int(input("1 - Ver extrato\n2 - Adicionar saldo\n3 - Atualizar o valor do saldo\n4 - Voltar\nResposta: "))
+            balance_option = int(input("1 - Extrato\n2 - Depositar\n3 - Sacar\n4 - Atualizar saldo\n5 - Voltar\nResposta: "))
 
             if balance_option == 1:
                 print("\n--EXTRATO--")
 
-                for balance_extract in range(len(balance)):
-                    print(f"{balance_extract}º valor: R${balance[balance_extract]}\n")
+                if balance_history == []:
+                    print("\nSem extrato disponível!\n")
+                else:
+                    for balance_index in range(len(balance_history)):
+                        print(f"{balance_index}º valor: R${balance_history[balance_index]}\n")
 
             elif balance_option == 2:
                 try:
-                    balance_add = float(input("Adicione o valor: R$"))
-                    available_balance_operations(balance, balance_add, balance_option)
-                    print(f"Valor adicionado com sucesso!: +R${balance_add}\n")
+                    balance_add = Decimal(input("Adicione o valor: R$"))
+                    balance_history, balance, balance_add = available_balance_operations(balance_history, balance, balance_add, balance_option)
+                    print(f"Valor depositado: +R${balance_add}\nNovo saldo: R${balance}") 
 
                 except Exception as error:
                     print(f"ERROR: {error}")
                     continue
 
-                return balance
-        
+                return balance_history, balance
+            
+            elif balance_option == 3:
+                try:
+                    balance_add = Decimal(input("Valor do saque: R$"))
+                    if balance_add > balance:
+                        print("Valor de saque maior que o saldo!")
+                        continue
+                    elif balance_add <= 0:
+                        print("Valor de saque inválido!")
+                        continue
+                    else:
+                        balance_history, balance, balance_add = available_balance_operations(balance_history, balance, balance_add, balance_option)
+                        print(f"Saque feito com sucesso: -R${balance_add}\nNovo saldo: R${balance}")
+                        continue
+
+                except ValueError as error:
+                    print(f"ERROR: {error}")
+                    continue
+
             elif balance_option == 4:
-                break
+                try:
+                    if input("VOCÊ DESEJA ALTERAR O SALDO? ESSA AÇÃO NÃO PODE SER ALTERADA! YES/NO\nResposta: ") == "YES":
+                        balance_add = Decimal(input("Novo valor do saldo: R$"))
+                        balance_history, balance = available_balance_operations(balance_history, balance, balance_add, balance_option)
+                        print(f"Valor alterado com sucesso!\nNovo saldo: R${balance}")
+                        continue
+
+                    else:
+                        print("ATUALIZAÇÃO DE SALDO ABORTADA!\n")
+                        continue
+
+                except ValueError as error:
+                    print(f"ERROR: {error}")
+                    continue
+
+            elif balance_option == 5:
+                return balance_history, balance
             
         except ValueError as error:
             print(f"ERROR: {error}")
             continue
 
 #========================
-# Interface IO main menu
+# Interface menu principal
 #========================
-def main_menu(balance, reserve):
+def main_menu(balance_history, balance, reserve):
     '''
         Menu principal, trás as opções:
             1 - Saldo:
@@ -160,13 +224,13 @@ def main_menu(balance, reserve):
     '''
 
     while True:
-        print(f"\nSaldo disponível: R${balance[-1]}")
+        print(f"\nSaldo disponível: R${balance}")
 
         try:
             value_menu_option = int(input("Opções:\n1 - Saldo\n2 - Reservas\n3 - exit\nResposta: "))
 
             if value_menu_option == 1:
-                balance_menu(balance)
+                balance_history, balance = balance_menu(balance_history, balance)
 
             elif value_menu_option == 2:
 
@@ -176,7 +240,7 @@ def main_menu(balance, reserve):
                 else:
                     print(f"Reservas\n{reserve}")
 
-                reserve_menu(balance, reserve)
+                reserve_menu(balance_history, balance, reserve)
 
             elif value_menu_option == 3:
                 print("...Finalizando CashFlow")
@@ -194,8 +258,12 @@ def main():
         Função principal, inicia as variáveis principais e chama o menu principal
     '''
     print("\n...Iniciando projeto CashFlow")
-    balance = [0]
+
+    balance = Decimal(0)
+    #balance = 0
+    balance_history = []
     reserve = {}
-    main_menu(balance, reserve)
+
+    main_menu(balance_history, balance, reserve)
     
 main()
