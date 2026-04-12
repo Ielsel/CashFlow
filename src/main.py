@@ -1,24 +1,35 @@
 '''
 Features:
-    Adicionar despesas;
-    Adicionar movimento das reservas;
-    Adicionar import pandas
-    Poder sacar e adicionar valores nas reservas já criadas
-    Poder modificar o nome da reserva
-    
-Fix:
-    Extrato é diferente do histórico de saldo, são valores depositados e saques
-    Mostrar as reservas com melhor formatação pro usuário
+    Enhancements:
+        - Sacar valores das reservas (reserva → saldo)
+        - Adicionar valores em reservas existentes
+        - Permitir edição do nome das reservas
+        - Registrar movimentações de reservas no extrato
+
+Fixes:
+    - Corrigir precisão com Decimal em valores altos
+    - Melhorar formatação da exibição de reservas
+    - Atualizar e padronizar comentários do código
+
+Tech Improvements:
+    - Adicionar timestamp (data/hora) nas transações
+    - Melhorar estrutura do extrato (DataFrame / exportação)
+
+Future (Long-term):
+    - Integração com banco de dados (SQLAlchemy)
+    - Interface web (Django)
 '''
+
 # Bibliotecas
 from decimal import *
+import pandas as pd
 
 getcontext().prec = 4
 
 #========================
 # Adicionar nova reserva
 #========================
-def add_new_reserve(balance_history, balance, reserve, reserve_balance, reserve_name):
+def add_new_reserve(account_statement, balance, reserve, amount, reserve_name):
     '''
         Adiciona uma nova reserva definindo nome e valor, 
         subtraindo o valor do saldo para a nova reserva:
@@ -27,49 +38,79 @@ def add_new_reserve(balance_history, balance, reserve, reserve_balance, reserve_
     '''
 
     # Tratamento caso o valor incluído na reserva seja maior que o saldo ou seja negativo
-    if balance < reserve_balance or reserve_balance < 0:
+    if balance < amount or amount < 0:
         return None
     
-    balance -= reserve_balance # Subtrai do saldo o dinheiro depositado na reserva
-    balance_history.append(balance) # Coloca o novo saldo no histórico
-    reserve[reserve_name] = reserve_balance # Cria o novo item na lista de reserva
-    return balance_history, balance, reserve # Retorna resultado
+    balance -= amount # Subtrai do saldo o dinheiro depositado na reserva
+    reserve[reserve_name] = amount # Cria o novo item na lista de reserva
+
+    account_statement.append({
+        "Operação": "Transferência reserva",
+        "Valor": amount,
+        "Saldo": balance
+    })
+
+    return account_statement, balance, reserve, amount, reserve_name # Retorna resultado
 
 #========================
-# Modificações de saldo
+# Depósito de saldo
 #========================
-def available_balance_operations(balance_history, balance, balance_add, balance_option):
+def balance_deposit(account_statement, balance, amount):
     '''
-        Deposita, faz saque e atualiza o saldo:
+        Deposita valor no saldo:
             Depósito de saldo: saldo + valor_input
-            Saque de saldo: saldo - valor_input
-            Atualizar saldo: saldo = novo_saldo
-            Histórico de saldo = lista de saldos
     '''
 
-    # Depósito
-    if balance_option == 2:
-        #balance += Decimal(balance_add) # Adiciona o valor do input no saldo
-        balance += balance_add
-        balance_history.append(balance) # Adiciona o novo saldo na lista de histórico de saldos
-        return balance_history, balance, balance_add # retorna valores atualizados
+    balance += amount
+    account_statement.append({
+        "Operação": "Depósito",
+        "Valor": amount,
+        "Saldo": balance
+    })
     
-    # Saque
-    elif balance_option == 3:
-        balance -= balance_add # Subtrai o valor do input no saldo
-        balance_history.append(balance) # Adiciona o novo saldo na lista de histórico de saldos
-        return balance_history, balance, balance_add # retorna valores atualizados
+    return account_statement, balance, amount # retorna valores atualizados
 
-    # Atualizar saldo
-    elif balance_option == 4:
-        balance = balance_add # Atribui o input ao saldo
-        balance_history.append(balance)
-        return balance_history, balance
+
+#========================
+# Saque de saldo
+#========================
+def balance_withdraw(account_statement, balance, amount):
+    '''
+        Sacar valor do saldo:
+            Saque de saldo: saldo - valor_input
+    '''
+    
+    balance -= amount # Subtrai o valor do input no saldo
+    account_statement.append({
+        "Operação": "Saque",
+        "Valor": amount,
+        "Saldo": balance
+    })
+    return account_statement, balance, amount # retorna valores atualizados
+
+#========================
+# Atualização de saldo
+#========================
+def balance_update(account_statement, balance, amount):
+    '''
+        Atualizar saldo: saldo = novo_saldo
+            Histórico de saldo = lista de saldos
+    ''' 
+
+    balance = amount # Atribui o input ao saldo
+
+    account_statement.append({
+        "Operação": "Atualização",
+        "Valor": amount,
+        "Saldo": balance
+    })
+
+    return account_statement, balance, amount
 
 #========================
 # Interface menu de reservas
 #========================
-def reserve_menu(balance_history, balance, reserve):
+def reserve_menu(account_statement, balance, reserve):
     '''
         Menu de reservas, trás as opções:
             1 - Ver reservas: 
@@ -104,14 +145,14 @@ def reserve_menu(balance_history, balance, reserve):
                     continue
                 
                 try:
-                    reserve_balance = Decimal(input("Digite o valor da reserva: "))
-                    add_new_reserve_result = add_new_reserve(balance_history, balance, reserve, reserve_balance, reserve_name)
+                    amount = Decimal(input("Digite o valor da reserva: "))
+                    add_new_reserve_result = add_new_reserve(account_statement, balance, reserve, amount, reserve_name)
                     if add_new_reserve_result is None:
                         print("Você não tem saldo suficiente!\nOBS: Verifique o valor do saldo\n")
                         continue
                     else:
-                        balance_history, balance, reserve = add_new_reserve_result
-                        print(f"Nova reserva adicionada!\n{reserve_name}: R${reserve_balance}\n")
+                        account_statement, balance, reserve, amount, reserve_name = add_new_reserve_result
+                        print(f"Nova reserva adicionada!\n{reserve_name}: R${amount}\n")
                         continue
 
                 except ValueError as error:
@@ -128,7 +169,7 @@ def reserve_menu(balance_history, balance, reserve):
 #========================
 # Interface menu de saldo
 #========================
-def balance_menu(balance_history, balance):
+def balance_menu(balance, account_statement):
     '''
         Menu de reservas, trás as opções:
             1 - Extrato:
@@ -150,36 +191,35 @@ def balance_menu(balance_history, balance):
             if balance_option == 1:
                 print("\n--EXTRATO--")
 
-                if balance_history == []:
+                if account_statement == []:
                     print("\nSem extrato disponível!\n")
                 else:
-                    for balance_index in range(len(balance_history)):
-                        print(f"{balance_index}º valor: R${balance_history[balance_index]}\n")
+                    account_statement_dataframe = pd.DataFrame(data = account_statement)
+                    print(f"\n{account_statement_dataframe}\n")
 
             elif balance_option == 2:
                 try:
-                    balance_add = Decimal(input("Adicione o valor: R$"))
-                    balance_history, balance, balance_add = available_balance_operations(balance_history, balance, balance_add, balance_option)
-                    print(f"Valor depositado: +R${balance_add}\nNovo saldo: R${balance}") 
+                    amount = Decimal(input("Adicione o valor: R$"))
+                    account_statement, balance, amount = balance_deposit(account_statement, balance, amount)
+                    #print(f"Valor depositado: +R${amount}\nNovo saldo: R${balance}") 
+                    print(f"Valor depositado: +R${amount}\nNovo saldo: R${balance}") 
 
                 except Exception as error:
                     print(f"ERROR: {error}")
                     continue
-
-                return balance_history, balance
             
             elif balance_option == 3:
                 try:
-                    balance_add = Decimal(input("Valor do saque: R$"))
-                    if balance_add > balance:
+                    amount = Decimal(input("Valor do saque: R$"))
+                    if amount > balance:
                         print("Valor de saque maior que o saldo!")
                         continue
-                    elif balance_add <= 0:
+                    elif amount <= 0:
                         print("Valor de saque inválido!")
                         continue
                     else:
-                        balance_history, balance, balance_add = available_balance_operations(balance_history, balance, balance_add, balance_option)
-                        print(f"Saque feito com sucesso: -R${balance_add}\nNovo saldo: R${balance}")
+                        account_statement, balance, amount = balance_withdraw(account_statement, balance, amount)
+                        print(f"Saque feito com sucesso: -R${amount}\nNovo saldo: R${balance}")
                         continue
 
                 except ValueError as error:
@@ -189,8 +229,8 @@ def balance_menu(balance_history, balance):
             elif balance_option == 4:
                 try:
                     if input("VOCÊ DESEJA ALTERAR O SALDO? ESSA AÇÃO NÃO PODE SER ALTERADA! YES/NO\nResposta: ") == "YES":
-                        balance_add = Decimal(input("Novo valor do saldo: R$"))
-                        balance_history, balance = available_balance_operations(balance_history, balance, balance_add, balance_option)
+                        amount = Decimal(input("Novo valor do saldo: R$"))
+                        account_statement, balance, amount = balance_update(account_statement, balance, amount)
                         print(f"Valor alterado com sucesso!\nNovo saldo: R${balance}")
                         continue
 
@@ -203,7 +243,7 @@ def balance_menu(balance_history, balance):
                     continue
 
             elif balance_option == 5:
-                return balance_history, balance
+                return account_statement, balance
             
         except ValueError as error:
             print(f"ERROR: {error}")
@@ -212,7 +252,7 @@ def balance_menu(balance_history, balance):
 #========================
 # Interface menu principal
 #========================
-def main_menu(balance_history, balance, reserve):
+def main_menu(balance, reserve, account_statement):
     '''
         Menu principal, trás as opções:
             1 - Saldo:
@@ -230,7 +270,7 @@ def main_menu(balance_history, balance, reserve):
             value_menu_option = int(input("Opções:\n1 - Saldo\n2 - Reservas\n3 - exit\nResposta: "))
 
             if value_menu_option == 1:
-                balance_history, balance = balance_menu(balance_history, balance)
+                balance, account_statement = balance_menu(balance, account_statement)
 
             elif value_menu_option == 2:
 
@@ -240,7 +280,7 @@ def main_menu(balance_history, balance, reserve):
                 else:
                     print(f"Reservas\n{reserve}")
 
-                reserve_menu(balance_history, balance, reserve)
+                reserve_menu(account_statement, balance, reserve)
 
             elif value_menu_option == 3:
                 print("...Finalizando CashFlow")
@@ -260,10 +300,9 @@ def main():
     print("\n...Iniciando projeto CashFlow")
 
     balance = Decimal(0)
-    #balance = 0
-    balance_history = []
     reserve = {}
+    account_statement = []
 
-    main_menu(balance_history, balance, reserve)
+    main_menu(balance, reserve, account_statement)
     
 main()
