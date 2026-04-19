@@ -1,17 +1,10 @@
 '''
 Features:
     Enhancements:
-        - Registrar movimentações de reservas no extrato
-        - Usar Pandas pra mostrar a reserva
-        - Implementar classes (account_statement, Reserva) - Pensar mais sobre
-        - Adicionar exclusão de uma reserva (retornar o valor da reserva para o saldo)
+        - Implementar classes (account_statement, Reserva) - Pensar mais sobre x
 
 Fixes:
     - Melhorar formatação da exibição de reservas
-
-Tech Improvements:
-    - Adicionar timestamp (data/hora) nas transações
-    - Melhorar estrutura do extrato (DataFrame / exportação)
 
 Future (Long-term):
     - Integração com banco de dados (SQLAlchemy)
@@ -43,7 +36,7 @@ def reserve_menu(balance, account_statement, reserve):
     while True:
         print("--MENU RESERVAS--")
         try:
-            reserve_option = int(input("1 - Ver reservas\n2 - Criar reserva\n3 - Alterar reserva\n4 - Voltar\nResposta: "))
+            reserve_option = int(input("1 - Ver reservas\n2 - Criar reserva\n3 - Alterar reserva\n4 - Excluir reserva\n5 - Voltar\nResposta: "))
 
             if reserve == {}:              
                 have_reserve = False
@@ -56,8 +49,8 @@ def reserve_menu(balance, account_statement, reserve):
                     print("\nNenhuma reserva criada!\n")
                     continue
                 else:
-                    # Formatar melhor a resposta: adicionar reserve_name e reserve_value
-                    print(f"\nReservas:\n{reserve}\n")
+                    for name, value in reserve.items():
+                        print(f"{name}: R${cash_format(value)}")
                     continue
                 
             # Criar reserva
@@ -70,14 +63,15 @@ def reserve_menu(balance, account_statement, reserve):
                     continue
                 
                 try:
-                    amount = Decimal(input("Digite o valor da reserva: "))
-                    add_new_reserve_result = add_new_reserve(balance, account_statement, reserve, amount, reserve_name)
-                    if add_new_reserve_result is None:
-                        print("Você não tem saldo suficiente!\nOBS: Verifique o valor do saldo\n")
-                        continue
-                    else:
-                        balance, account_statement, reserve, amount, reserve_name = add_new_reserve_result
+                    amount = Decimal(input("Digite o valor da reserva: ").replace(",", "."))
+
+                    if transaction_verify(balance, amount):
+                        balance, account_statement, reserve, amount, reserve_name = add_new_reserve(balance, account_statement, reserve, amount, reserve_name)
                         print(f"Nova reserva adicionada!\n{reserve_name}: R${cash_format(amount)}\n")
+                        continue
+                        
+                    else:
+                        print("Você não tem saldo suficiente!\nOBS: Verifique o valor do saldo\n")
                         continue
 
                 except ValueError as error:
@@ -89,24 +83,52 @@ def reserve_menu(balance, account_statement, reserve):
 
                 if have_reserve:    
 
-                    reserve_name = input(f"Digite o nome da reserva que deseja alterar\n{reserve}\nResposta: ")
+                    print("\nReservas disponíveis:")
+                    for name, value in reserve.items():
+                        print(f"- {name}: R${cash_format(value)}")
+
+                    reserve_name = input("Digite o nome da reserva: ")
 
                     # Verifica se existe reserva com o nome digitado
                     if reserve_name in reserve:
                         try:
                             type_modification = int(input(f"O que você deseja alterar da reserva {reserve_name}?\n1 - Alterar nome\n2 - Depositar valor\n3 - Sacar valor\nResposta:"))
 
+                            # Alterar nome da reserva
                             if type_modification == 1:
+
                                 new_reserve_name = input(f"Digite o novo nome da reserva {reserve_name}\n Resposta: ")
-                                reserve = rename_reserve(reserve, new_reserve_name, reserve_name)
 
+                                if new_reserve_name in reserve:
+                                    print("Já existe uma reserva com esse nome!")
+                                    continue
+                                else:
+                                    reserve = reserve_rename(reserve, new_reserve_name, reserve_name)
+                                    continue
+
+                            # Depositar valor na reserva
                             elif type_modification == 2:
-                                amount_reserve_value = Decimal(input(f"Digite o valor de depósito para a reserva {reserve_name}\n Resposta: "))
-                                balance, reserve = reserve_deposit(balance, reserve, amount_reserve_value, reserve_name)
+                                amount_reserve_value = Decimal(input(f"Digite o valor de depósito para a reserva {reserve_name}\n Resposta: ").replace(",", "."))
 
+                                if transaction_verify(balance, amount_reserve_value):
+                                    balance, reserve, account_statement = reserve_deposit(balance, reserve, amount_reserve_value, reserve_name, account_statement)
+                                    print(f"Valor de R${cash_format(amount_reserve_value)} depositado na reserva {reserve_name}\nNovo saldo: R${cash_format(balance)}")
+                                    continue
+                                else:
+                                    print("Você não tem saldo suficiente!\nOBS: Verifique o valor do saldo\n")
+                                    continue
+
+                            # Sacar valor da reserva
                             elif type_modification == 3:
-                                amount_reserve_value = Decimal(input(f"Digite o valor de saque para a reserva {reserve_name}\n Resposta: "))
-                                balance, reserve = reserve_withdraw(balance, reserve, amount_reserve_value, reserve_name)
+                                amount_reserve_value = Decimal(input(f"Digite o valor de saque para a reserva {reserve_name}\n Resposta: ").replace(",", "."))
+
+                                if transaction_verify(reserve[reserve_name], amount_reserve_value):
+                                    balance, reserve, account_statement = reserve_withdraw(balance, reserve, amount_reserve_value, reserve_name, account_statement)
+                                    print(f"Valor de R${cash_format(amount_reserve_value)} sacado da reserva {reserve_name}\nNovo saldo: R${cash_format(balance)}")
+                                    continue
+                                else:
+                                    print("Saldo da reserva insuficiente!\nOBS: Verifique o valor da reserva\n")
+                                    continue
 
                             else:
                                 print("O valor digitado é inválido!")
@@ -121,9 +143,25 @@ def reserve_menu(balance, account_statement, reserve):
 
                 else:
                     print("\nNenhuma reserva criada para ser alterada!\n")
+            
+            # Excluir reserva
+            elif reserve_option == 4:
+                print("\nReservas disponíveis:")
+                for name, value in reserve.items():
+                    print(f"- {name}: R${cash_format(value)}")
+
+                reserve_name = input("Digite o nome da reserva: ")
+
+                if reserve_name in reserve:
+                    balance, reserve, account_statement = reserve_delete(balance, account_statement, reserve, reserve_name)
+                    print(f"Reserva {reserve_name} excluída com sucesso!")
+
+                else:
+                    print(f"\nNão existe reserva \"{reserve_name}\"\n")
+                    continue
 
             # Voltar
-            elif reserve_option == 4:
+            elif reserve_option == 5:
                 return balance, account_statement, reserve
             
             else:
@@ -168,9 +206,13 @@ def balance_menu(balance, account_statement):
             # Depositar
             elif balance_option == 2:
                 try:
-                    amount = Decimal(input("Adicione o valor: R$"))
-                    balance, account_statement, amount = balance_deposit(balance, account_statement, amount)
-                    print(f"Valor depositado: +R${cash_format(amount)}\nNovo saldo: R${cash_format(balance)}") 
+                    amount = Decimal(input("Adicione o valor: R$").replace(",", "."))
+
+                    if amount <= 0:
+                        print("\nValor de depósito inválido!\n")
+                    else:
+                        balance, account_statement, amount = balance_deposit(balance, account_statement, amount)
+                        print(f"Valor depositado: +R${cash_format(amount)}\nNovo saldo: R${cash_format(balance)}") 
 
                 except Exception as error:
                     print(f"ERROR: {error}")
@@ -179,16 +221,15 @@ def balance_menu(balance, account_statement):
             # Sacar
             elif balance_option == 3:
                 try:
-                    amount = Decimal(input("Valor do saque: R$"))
-                    if amount > balance:
-                        print("Valor de saque maior que o saldo!")
-                        continue
-                    elif amount <= 0:
-                        print("Valor de saque inválido!")
-                        continue
-                    else:
+                    amount = Decimal(input("Valor do saque: R$").replace(",", "."))
+
+                    if transaction_verify(balance, amount):
                         balance, account_statement, amount = balance_withdraw(balance, account_statement, amount)
                         print(f"Saque feito com sucesso: -R${cash_format(amount)}\nNovo saldo: R${cash_format(balance)}")
+                        continue
+
+                    else:
+                        print("Valor de saque inválido!")
                         continue
 
                 except ValueError as error:
@@ -199,7 +240,7 @@ def balance_menu(balance, account_statement):
             elif balance_option == 4:
                 try:
                     if input("VOCÊ DESEJA ALTERAR O SALDO? ESSA AÇÃO NÃO PODE SER ALTERADA! YES/NO\nResposta: ") == "YES":
-                        amount = Decimal(input("Novo valor do saldo: R$"))
+                        amount = Decimal(input("Novo valor do saldo: R$").replace(",", "."))
                         balance, account_statement, amount = balance_update(balance, account_statement, amount)
                         print(f"Valor alterado com sucesso!\nNovo saldo: R${cash_format(balance)}")
                         continue
@@ -254,7 +295,9 @@ def main_menu(balance, reserve, account_statement):
                     print("Nenhuma reserva criada!")
 
                 else:
-                    print(f"Reservas\n{reserve}")
+                    print("Reservas:")
+                    for name, value in reserve.items():
+                        print(f"- {name}: R${cash_format(value)}")
 
                 balance, account_statement, reserve = reserve_menu(balance, account_statement, reserve)
 
