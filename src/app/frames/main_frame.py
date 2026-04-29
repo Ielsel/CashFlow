@@ -1,5 +1,5 @@
 import customtkinter
-from ..tools import *
+from ..tools import cash_format
 
 class main_frame(customtkinter.CTkFrame):
     def __init__(self, master, app, **kwargs):
@@ -15,4 +15,3 @@ class main_frame(customtkinter.CTkFrame):
 
         self.btn_reserve_menu = customtkinter.CTkButton(self, text="Menu de reservas", command=self.app.show_reserve)
         self.btn_reserve_menu.pack(padx=10, pady=10)
-        

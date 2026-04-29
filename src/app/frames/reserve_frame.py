@@ -1,5 +1,5 @@
 import customtkinter
-from ..tools import *
+from ..tools import cash_format
 
 class reserve_frame(customtkinter.CTkFrame):
     def __init__(self, master, app,**kwargs):
