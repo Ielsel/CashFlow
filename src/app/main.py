@@ -11,6 +11,8 @@ Future (Long-term):
     - Interface web (Django)
 '''
 
+# ! Esse código vai ser substituito por app
+
 # Imports
 from decimal import Decimal, getcontext
 import pandas as pd
