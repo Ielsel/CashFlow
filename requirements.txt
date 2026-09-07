@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue]==22.8
+python-dotenv==1.0.1
+ollama
+gspread==6.1.4
+google-auth==2.35.0
